@@ -1,75 +1,40 @@
 variable "DOCKERHUB_REPO" {
-  default = "timpietruskyblibla"
+  default = ""
 }
 
 variable "DOCKERHUB_IMG" {
-  default = "runpod-worker-comfy"
+  default = ""
 }
 
 variable "RELEASE_VERSION" {
-  default = "latest"
+  default = ""
 }
 
 variable "HUGGINGFACE_ACCESS_TOKEN" {
   default = ""
 }
 
+variable "CIVITAI_ACCESS_TOKEN" {
+  default = ""
+}
+
+variable "RELEASE_VERSION" {
+  default = "1.0.0"
+}
+
 group "default" {
-  targets = ["base", "sdxl", "sd3", "flux1-schnell", "flux1-dev"]
+  targets = ["flux-outpaint"]
 }
 
-target "base" {
-  context = "."
-  dockerfile = "Dockerfile"
-  target = "base"
-  platforms = ["linux/amd64"]
-  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-base"]
-}
-
-target "sdxl" {
+target "flux1-base" {
   context = "."
   dockerfile = "Dockerfile"
   target = "final"
   args = {
-    MODEL_TYPE = "sdxl"
-  }
-  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-sdxl"]
-  inherits = ["base"]
-}
-
-target "sd3" {
-  context = "."
-  dockerfile = "Dockerfile"
-  target = "final"
-  args = {
-    MODEL_TYPE = "sd3"
+    MODEL_TYPE = "flux1-base"
     HUGGINGFACE_ACCESS_TOKEN = "${HUGGINGFACE_ACCESS_TOKEN}"
   }
-  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-sd3"]
-  inherits = ["base"]
-}
-
-target "flux1-schnell" {
-  context = "."
-  dockerfile = "Dockerfile"
-  target = "final"
-  args = {
-    MODEL_TYPE = "flux1-schnell"
-    HUGGINGFACE_ACCESS_TOKEN = "${HUGGINGFACE_ACCESS_TOKEN}"
-  }
-  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-flux1-schnell"]
-  inherits = ["base"]
-}
-
-target "flux1-dev" {
-  context = "."
-  dockerfile = "Dockerfile"
-  target = "final"
-  args = {
-    MODEL_TYPE = "flux1-dev"
-    HUGGINGFACE_ACCESS_TOKEN = "${HUGGINGFACE_ACCESS_TOKEN}"
-  }
-  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-flux1-dev"]
+  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-flux1-base"]
   inherits = ["base"]
 }
 
