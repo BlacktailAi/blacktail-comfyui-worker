@@ -1,24 +1,64 @@
-# Use the existing flux1-dev image as base
-FROM timpietruskyblibla/runpod-worker-comfy:3.4.0-flux1-dev
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_PREFER_BINARY=1 \
+    PYTHONUNBUFFERED=1 \
+    COMFYUI_VERSION=0.2.7
+
+# Install Python and required system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    git \
+    wget \
+    libgl1 \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ComfyUI and its requirements
+WORKDIR /comfyui
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git . \
+    && git checkout ${COMFYUI_VERSION} \
+    && pip install --no-cache-dir torch==2.1.0 torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118 \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir runpod requests comfy-cli
+
+COPY src/extra_model_paths.yaml ./extra_model_paths.yaml
+
+WORKDIR /
+# Copy your custom handler and configuration files
+ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
+RUN chmod +x /start.sh /restore_snapshot.sh
+ADD *snapshot*.json /
+RUN /restore_snapshot.sh
+
+# Download models
+FROM base as downloader
 
 # Change working directory to ComfyUI
 WORKDIR /comfyui
 
-# If you want to add custom models, uncomment and modify these lines:
-# RUN mkdir -p models/checkpoints models/vae
-# Add your custom model downloads here, for example:
-# RUN wget -O models/checkpoints/your_model.safetensors https://example.com/path/to/your/model.safetensors
+ARG HUGGINGFACE_ACCESS_TOKEN
+ARG MODEL_TYPE
 
-# If you want to add custom nodes via a snapshot:
-# 1. Copy your snapshot file
-# COPY your_snapshot.json /
-# 2. Run the restore script (already exists in base image)
-# RUN /restore_snapshot.sh
+# Create model directories
+RUN mkdir -p \
+    models/clip \
+    models/unet \
+    models/vae
 
-# You can add any additional customizations here, such as:
-# - Installing additional Python packages
-# - Adding custom scripts
-# - Modifying configurations
+# Download FLUX.1 dev model and required files
+RUN wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/unet/flux1-dev.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors && \
+wget -O models/clip/clip_l.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors && \
+wget -O models/clip/t5xxl_fp8_e4m3fn.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
+wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/vae/ae.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors;
 
-# The base image already includes the necessary start script and handler
+FROM base as final
+
+# Copy models from stage 2 to the final image
+COPY --from=downloader /comfyui/models /comfyui/models
+
+# Start container
 CMD ["/start.sh"]
