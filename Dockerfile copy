@@ -18,14 +18,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install ComfyUI and its requirements
-WORKDIR /comfyui
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git . \
-    && git checkout ${COMFYUI_VERSION} \
-    && pip install --no-cache-dir torch==2.1.0 torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118 \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir runpod requests comfy-cli
+# Install comfy-cli
+RUN pip install comfy-cli
 
-COPY src/extra_model_paths.yaml ./extra_model_paths.yaml
+# Install ComfyUI
+RUN /usr/bin/yes | comfy --workspace /comfyui install --cuda-version 11.8 --nvidia --version 0.2.7
+
+# Change working directory to ComfyUI
+WORKDIR /comfyui
+
+# Install runpod
+RUN pip install runpod requests
+
+# Support for the network volume
+ADD src/extra_model_paths.yaml ./
 
 WORKDIR /
 # Copy your custom handler and configuration files
