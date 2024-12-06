@@ -14,7 +14,7 @@ This repository contains a customized version of the ComfyUI worker for RunPod, 
 
 1. **Deploy to RunPod**
 
-   - Use our Docker image: `blacktailai/runpod-worker-comfy:latest`
+   - Use our Docker image: `blacktailai/blacktail-comfyui-worker:latest`
    - Recommended GPU: 24GB+ VRAM
    - Set your AWS S3 environment variables if needed
 
@@ -54,16 +54,16 @@ This repository contains a customized version of the ComfyUI worker for RunPod, 
 To build locally:
 
 ```bash
-docker build -t blacktailai/runpod-worker-comfy:dev .
+docker build -t blacktailai/blacktail-comfyui-worker:dev .
 ```
 
 ## Updates and Maintenance
 
-This repository is a customized fork of [runpod-worker-comfy](https://github.com/blib-la/runpod-worker-comfy). To update with upstream changes:
+This repository is a customized fork of [blacktail-comfyui-worker](https://github.com/blib-la/blacktail-comfyui-worker). To update with upstream changes:
 
 ```bash
 # Add the upstream remote (one-time setup)
-git remote add upstream https://github.com/blib-la/runpod-worker-comfy.git
+git remote add upstream https://github.com/blib-la/blacktail-comfyui-worker.git
 
 # Fetch upstream changes
 git fetch upstream
@@ -74,7 +74,7 @@ git merge upstream/main
 
 ## License
 
-This project is licensed under the same terms as the original runpod-worker-comfy.
+This project is licensed under the same terms as the original blacktail-comfyui-worker.
 
 ---
 

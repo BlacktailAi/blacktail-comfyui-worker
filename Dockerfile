@@ -1,3 +1,4 @@
+# Stage 1: Base image with common dependencies
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
 
 # Prevents prompts from packages asking for user input during installation
@@ -66,7 +67,7 @@ WORKDIR /comfyui
 RUN mkdir -p models/checkpoints models/vae
 
 # Download checkpoints/vae/LoRA to include in image based on model type
-RUN if [ "$MODEL_TYPE" = "flux1-base" ]; then \
+RUN if [ "$MODEL_TYPE" = "flux1-dev" ]; then \
       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/unet/flux1-dev.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors && \
       wget -O models/clip/clip_l.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors && \
       wget -O models/clip/t5xxl_fp8_e4m3fn.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \

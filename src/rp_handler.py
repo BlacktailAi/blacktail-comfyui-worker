@@ -95,7 +95,7 @@ def check_server(url, retries=500, delay=50):
 
             # If the response status code is 200, the server is up and running
             if response.status_code == 200:
-                print(f"runpod-worker-comfy - API is reachable")
+                print(f"blacktail-comfyui-worker - API is reachable")
                 return True
         except requests.RequestException as e:
             # If an exception occurs, the server may not be ready
@@ -105,7 +105,7 @@ def check_server(url, retries=500, delay=50):
         time.sleep(delay / 1000)
 
     print(
-        f"runpod-worker-comfy - Failed to connect to server at {url} after {retries} attempts."
+        f"blacktail-comfyui-worker - Failed to connect to server at {url} after {retries} attempts."
     )
     return False
 
@@ -145,7 +145,7 @@ def upload_images(images):
     responses = []
     upload_errors = []
 
-    print(f"runpod-worker-comfy - image(s) upload")
+    print(f"blacktail-comfyui-worker - image(s) upload")
 
     for image in images:
         try:
@@ -154,7 +154,7 @@ def upload_images(images):
             
             # Determine if the image is an S3 URL or base64
             if isinstance(image_data, str) and is_valid_s3_url(image_data):
-                print(f"runpod-worker-comfy - downloading image from S3: {image_data}")
+                print(f"blacktail-comfyui-worker - downloading image from S3: {image_data}")
                 try:
                     blob = download_from_s3(image_data)
                 except Exception as e:
@@ -185,14 +185,14 @@ def upload_images(images):
             upload_errors.append(f"Unexpected error processing {name}: {str(e)}")
 
     if upload_errors:
-        print(f"runpod-worker-comfy - image(s) upload with errors: {upload_errors}")
+        print(f"blacktail-comfyui-worker - image(s) upload with errors: {upload_errors}")
         return {
             "status": "error",
             "message": "Some images failed to upload",
             "details": upload_errors,
         }
 
-    print(f"runpod-worker-comfy - image(s) upload complete")
+    print(f"blacktail-comfyui-worker - image(s) upload complete")
     return {
         "status": "success",
         "message": "All images uploaded successfully",
@@ -286,12 +286,12 @@ def process_output_images(outputs, job_id):
             for image in node_output["images"]:
                 output_images = os.path.join(image["subfolder"], image["filename"])
 
-    print(f"runpod-worker-comfy - image generation is done")
+    print(f"blacktail-comfyui-worker - image generation is done")
 
     # expected image output folder
     local_image_path = f"{COMFY_OUTPUT_PATH}/{output_images}"
 
-    print(f"runpod-worker-comfy - {local_image_path}")
+    print(f"blacktail-comfyui-worker - {local_image_path}")
 
     # The image is in the output folder
     if os.path.exists(local_image_path):
@@ -299,13 +299,13 @@ def process_output_images(outputs, job_id):
             # URL to image in AWS S3
             image = rp_upload.upload_image(job_id, local_image_path)
             print(
-                "runpod-worker-comfy - the image was generated and uploaded to AWS S3"
+                "blacktail-comfyui-worker - the image was generated and uploaded to AWS S3"
             )
         else:
             # base64 image
             image = base64_encode(local_image_path)
             print(
-                "runpod-worker-comfy - the image was generated and converted to base64"
+                "blacktail-comfyui-worker - the image was generated and converted to base64"
             )
 
         return {
@@ -313,7 +313,7 @@ def process_output_images(outputs, job_id):
             "message": image,
         }
     else:
-        print("runpod-worker-comfy - the image does not exist in the output folder")
+        print("blacktail-comfyui-worker - the image does not exist in the output folder")
         return {
             "status": "error",
             "message": f"the image does not exist in the specified output folder: {local_image_path}",
@@ -361,12 +361,12 @@ def handler(job):
     try:
         queued_workflow = queue_workflow(workflow)
         prompt_id = queued_workflow["prompt_id"]
-        print(f"runpod-worker-comfy - queued workflow with ID {prompt_id}")
+        print(f"blacktail-comfyui-worker - queued workflow with ID {prompt_id}")
     except Exception as e:
         return {"error": f"Error queuing workflow: {str(e)}"}
 
     # Poll for completion
-    print(f"runpod-worker-comfy - wait until image generation is complete")
+    print(f"blacktail-comfyui-worker - wait until image generation is complete")
     retries = 0
     try:
         while retries < COMFY_POLLING_MAX_RETRIES:
