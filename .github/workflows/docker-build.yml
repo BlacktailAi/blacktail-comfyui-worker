@@ -3,13 +3,11 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main  # or your default branch
-  # Optional: Also trigger on release tags
+      - main
   release:
     types: [published]
 
 env:
-  # You can override these by setting repository variables
   DOCKER_IMAGE_NAME: blacktail-comfyui-worker
   DOCKER_BASE_IMAGE: timpietruskyblibla/runpod-worker-comfy:3.4.0-flux1-dev
 
@@ -17,11 +15,27 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
+      - name: Free disk space
+        run: |
+          # Remove unnecessary large packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          # Clear docker images
+          docker system prune -af
+          # Show disk space after cleanup
+          df -h
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -32,11 +46,9 @@ jobs:
       - name: Set Docker image tags
         id: set-tags
         run: |
-          # If this is a release, use the release tag and latest
           if [[ "${{ github.event_name }}" == "release" ]]; then
             echo "tags=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.event.release.tag_name }},${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
           else
-            # For regular pushes, use the commit SHA and dev tag
             echo "tags=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }},${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:dev" >> $GITHUB_OUTPUT
           fi
 
@@ -49,3 +61,6 @@ jobs:
           platforms: linux/amd64
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
+          provenance: false
+          build-args: |
+            BUILDKIT_STEP_LOG_MAX_SIZE=10485760
