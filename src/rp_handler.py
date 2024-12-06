@@ -23,7 +23,6 @@ COMFY_HOST = "127.0.0.1:8188"
 # see https://docs.runpod.io/docs/handler-additional-controls#refresh-worker
 REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 
-
 def validate_input(job_input):
     """
     Validates the input for the handler function.
@@ -54,17 +53,28 @@ def validate_input(job_input):
     # Validate 'images' in input, if provided
     images = job_input.get("images")
     if images is not None:
-        if not isinstance(images, list) or not all(
-            "name" in image and "image" in image for image in images
-        ):
-            return (
-                None,
-                "'images' must be a list of objects with 'name' and 'image' keys",
-            )
+        if not isinstance(images, list):
+            return None, "'images' must be a list"
+        
+        for image in images:
+            if not isinstance(image, dict):
+                return None, "Each image must be an object"
+            if "name" not in image:
+                return None, "Each image must have a 'name' field"
+            if "image" not in image:
+                return None, "Each image must have an 'image' field"
+            # Validate that image is either a valid S3 URL or base64 string
+            if isinstance(image["image"], str):
+                if not (is_valid_s3_url(image["image"]) or 
+                       # Simple base64 validation - should start with common image formats
+                       any(image["image"].startswith(prefix) for prefix in 
+                           ['data:image', '/9j/', 'iVBORw0KG', 'R0lGODlh'])):
+                    return None, f"Image must be either a valid S3 URL or base64 encoded string: {image['name']}"
+            else:
+                return None, f"Image must be a string (S3 URL or base64): {image['name']}"
 
     # Return validated data and no error
     return {"workflow": workflow, "images": images}, None
-
 
 def check_server(url, retries=500, delay=50):
     """
@@ -99,17 +109,35 @@ def check_server(url, retries=500, delay=50):
     )
     return False
 
+def is_valid_s3_url(url):
+    """
+    Validate if the given URL is an S3 URL
+    """
+    return url.startswith('https://') and ('.s3.' in url or 's3.amazonaws.com' in url)
+
+def download_from_s3(url):
+    """
+    Download an image from S3 URL and return the binary content
+    """
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        return response.content
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Failed to download image from S3: {str(e)}")
 
 def upload_images(images):
     """
-    Upload a list of base64 encoded images to the ComfyUI server using the /upload/image endpoint.
+    Upload images to the ComfyUI server. Images can be either base64 encoded strings
+    or S3 URLs.
 
     Args:
-        images (list): A list of dictionaries, each containing the 'name' of the image and the 'image' as a base64 encoded string.
-        server_address (str): The address of the ComfyUI server.
+        images (list): A list of dictionaries, each containing:
+            - 'name': name of the image
+            - 'image': either a base64 encoded string or an S3 URL
 
     Returns:
-        list: A list of responses from the server for each image upload.
+        dict: Status of the upload operation
     """
     if not images:
         return {"status": "success", "message": "No images to upload", "details": []}
@@ -120,25 +148,44 @@ def upload_images(images):
     print(f"runpod-worker-comfy - image(s) upload")
 
     for image in images:
-        name = image["name"]
-        image_data = image["image"]
-        blob = base64.b64decode(image_data)
+        try:
+            name = image["name"]
+            image_data = image["image"]
+            
+            # Determine if the image is an S3 URL or base64
+            if isinstance(image_data, str) and is_valid_s3_url(image_data):
+                print(f"runpod-worker-comfy - downloading image from S3: {image_data}")
+                try:
+                    blob = download_from_s3(image_data)
+                except Exception as e:
+                    upload_errors.append(f"Error downloading {name} from S3: {str(e)}")
+                    continue
+            else:
+                # Assume it's base64 encoded
+                try:
+                    blob = base64.b64decode(image_data)
+                except Exception as e:
+                    upload_errors.append(f"Error decoding base64 for {name}: {str(e)}")
+                    continue
 
-        # Prepare the form data
-        files = {
-            "image": (name, BytesIO(blob), "image/png"),
-            "overwrite": (None, "true"),
-        }
+            # Prepare the form data
+            files = {
+                "image": (name, BytesIO(blob), "image/png"),
+                "overwrite": (None, "true"),
+            }
 
-        # POST request to upload the image
-        response = requests.post(f"http://{COMFY_HOST}/upload/image", files=files)
-        if response.status_code != 200:
-            upload_errors.append(f"Error uploading {name}: {response.text}")
-        else:
-            responses.append(f"Successfully uploaded {name}")
+            # POST request to upload the image
+            response = requests.post(f"http://{COMFY_HOST}/upload/image", files=files)
+            if response.status_code != 200:
+                upload_errors.append(f"Error uploading {name}: {response.text}")
+            else:
+                responses.append(f"Successfully uploaded {name}")
+
+        except Exception as e:
+            upload_errors.append(f"Unexpected error processing {name}: {str(e)}")
 
     if upload_errors:
-        print(f"runpod-worker-comfy - image(s) upload with errors")
+        print(f"runpod-worker-comfy - image(s) upload with errors: {upload_errors}")
         return {
             "status": "error",
             "message": "Some images failed to upload",
