@@ -1,5 +1,5 @@
 #! /bin/bash
-HUGGINGFACE_ACCESS_TOKEN = "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"
+HUGGINGFACE_ACCESS_TOKEN = "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"
 CIVITAI_ACCESS_TOKEN = "8e09f55a53539cf353113b3085614899"
 apt-get update
 pip install --upgrade pip
@@ -14,7 +14,7 @@ wget -0 models/checkpoints/flux1DevGGUF_Q8.safetensors "https://civitai.com/api/
 
 echo -e "Downloading VAE ✨"
 wget -O models/vae/vae-ft-mse-840000-ema-pruned.safetensors https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors
-RUN wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/vae/ae.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors;
+wget --header="Authorization: Bearer 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" -O models/vae/ae.safetensors https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors;
 
 echo -e "Downloading UNET ✨"
 wget --header="Authorization: Bearer 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" -O  models/unet/IC-Light/iclight_sd15_fc_unet_ldm.safetensors https://huggingface.co/huchenlei/IC-Light-ldm/resolve/main/iclight_sd15_fc_unet_ldm.safetensors

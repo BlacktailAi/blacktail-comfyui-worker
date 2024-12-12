@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install comfy-cli runpod requests && \
     /usr/bin/yes | comfy --workspace /comfyui install --cuda-version 11.8 --nvidia --version 0.2.7
+RUN pip install --upgrade torch torchvision
 
 # Add configuration and scripts
 WORKDIR /
