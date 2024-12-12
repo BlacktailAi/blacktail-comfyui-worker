@@ -1,4 +1,4 @@
-runpod_worker_comfy:
+blacktail-comfyui-worker:
   base_path: /runpod-volume
   checkpoints: models/checkpoints/
   clip: models/clip/
